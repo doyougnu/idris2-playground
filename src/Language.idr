@@ -3,6 +3,7 @@ module Language
 import Data.Vect
 
 -- * Types
+public export
 data Ty = TyInt
         | TyBool
         | TyFun Ty Ty
@@ -10,6 +11,7 @@ data Ty = TyInt
 -- | notice in idris2 we can calculuate types simply and easily. This is
 -- | basically injecting our type system Ty into the idris Type system! How cool
 ||| this is a doc string?
+public export
 interpTy : Ty -> Type
 interpTy TyInt       = Integer
 interpTy TyBool      = Bool
@@ -22,12 +24,14 @@ interpTy (TyFun x y) = interpTy x -> interpTy y
 ||| that if the nth variable is well typed, so is the n+1th variable. Notice
 ||| that this grows just like a list, i.e., Pop (Pop Stop) is similar to Cons
 ||| (Cons Nil)
+public export
 data HasType : (i : Fin n) -> Vect n Ty -> Ty -> Type where
      Stop : HasType FZ (t :: ctxt) t
      Pop  : HasType k ctxt t -> HasType (FS k) (u :: ctxt) t
 
 ||| an Expr is a GADT that will be indexed by local type variables. This is all
 ||| mostly self-explanatory
+public export
 data Expr : Vect n Ty -> Ty -> Type where
      ||| If the variable i is well typed then we can conclude an Expr of type t
      Var : HasType i ctxt t -> Expr ctxt t
