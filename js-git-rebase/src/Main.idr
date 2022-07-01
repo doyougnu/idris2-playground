@@ -23,7 +23,6 @@
 
 module Main
 
-import Data.So
 import Data.Vect
 import Data.Maybe
 import Data.Stream
@@ -40,6 +39,13 @@ Path = String
 ||| A type synonym for Commands
 Command : Type
 Command = String
+
+||| A type synonym for Command arguments
+Arguments : Type
+Arguments = String
+
+CommandArgs : Type
+CommandArgs = List Arguments
 
 ||| A Directory is a dependently typed set of names. It dependently typed by the
 ||| path to the directory and each element of the type is a file that resides in
@@ -63,26 +69,15 @@ public export
 data NotProtected : (d : Directory p) -> Type where
   IsNotProtected : NotProtected (UnProtected d)
 
--- Uninhabited (NotRoot d = Main.root) where
---   uninhabited Refl impossible
+Uninhabited (NotProtected (Protected p)) where
+  uninhabited IsNotProtected impossible
 
 data StreamTy = StdIn
               | StdOut
               | StdErr
 
 data Cmd : (c : Command) -> StreamTy -> Type where
-  MkCmd : (c : Command) -> (t : StreamTy) -> Cmd c t
-
--- data GitTy = Rebasing
---            | Merging
---            | Clean
---            | Dirty
---            | DoesntMatter
-
--- data CmdTy = Destructive
---            | Diagnostic
---            | Git CurrentBranch GitTy
-
+  MkCmd : (c : Command) -> (args : CommandArgs) -> (t : StreamTy) -> Cmd c t
 
 -- data HasType : (i : Fin n) -> Vect n CmdTy -> CmdTy -> Type where
 --   Here  : HasType FZ (t :: ctxt) t
@@ -90,7 +85,7 @@ data Cmd : (c : Command) -> StreamTy -> Type where
 
 data Shell : Directory p -> StreamTy -> Type where
   ShCmd : Cmd c t -> Shell ctxt t
-  Seq : Shell ctx t -> Shell ctx' t' -> Shell ctx' t'
+  Pipe : Shell ctx t -> Shell ctx' t' -> Shell ctx' t'
 
 home : Directory "~"
 home = Protected "~"
@@ -99,19 +94,23 @@ programming : Directory "~/programming"
 programming = UnProtected "~/programming"
 
 cd : (new : Directory p) -> Shell new StdOut
-cd (Protected p) = ShCmd (MkCmd p StdOut)
-cd (UnProtected p) = ShCmd (MkCmd p StdOut)
+cd (Protected p) = ShCmd (MkCmd p neutral StdOut)
+cd (UnProtected p) = ShCmd (MkCmd p neutral StdOut)
+
+wc : CommandArgs -> Shell here StdOut
+wc args = ShCmd (MkCmd "wc" args StdOut)
 
 toHome : Shell Main.home StdOut
 toHome = cd home
 
-rm : (to_remove : Directory p) -> (0 _ : NotProtected to_remove) -> Shell here StdOut
-rm (UnProtected p) IsNotProtected = ShCmd (MkCmd p StdOut)
--- rm (Protected _)  NotProtected  impossible
--- rm (UnProtected p) _ = ShCmd (MkCmd "rm" StdOut)
+rm : (to_remove : Directory p)
+   -> CommandArgs
+   -> {auto 0 prf : NotProtected to_remove}
+   -> Shell here StdOut
+rm (UnProtected p) args = ShCmd (MkCmd p args StdOut)
 
 ex : Shell s StdOut
-ex = rm programming IsNotProtected
+ex = rm programming ["rf"]
 
 main : IO ()
 main = do
