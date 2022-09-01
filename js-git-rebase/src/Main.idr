@@ -87,6 +87,10 @@ data Shell : Directory p -> StreamTy -> Type where
   ShCmd : Cmd c t -> Shell ctxt t
   Pipe : Shell ctx t -> Shell ctx' t' -> Shell ctx' t'
 
+infix 2 -|-
+(-|-) : Shell ctx t -> Shell ctx' t' -> Shell ctx' t'
+(-|-) = Pipe
+
 home : Directory "~"
 home = Protected "~"
 
@@ -94,7 +98,7 @@ programming : Directory "~/programming"
 programming = UnProtected "~/programming"
 
 cd : (new : Directory p) -> Shell new StdOut
-cd (Protected p) = ShCmd (MkCmd p neutral StdOut)
+cd (Protected p)   = ShCmd (MkCmd p neutral StdOut)
 cd (UnProtected p) = ShCmd (MkCmd p neutral StdOut)
 
 wc : CommandArgs -> Shell here StdOut
@@ -111,6 +115,12 @@ rm (UnProtected p) args = ShCmd (MkCmd p args StdOut)
 
 ex : Shell s StdOut
 ex = rm programming ["rf"]
+
+ex0 : Shell Main.home StdOut
+ex0 = Pipe (cd programming) toHome
+
+ex1 : Shell Main.home StdOut
+ex1 = cd programming -|- cd home -|- cd programming -|- cd home
 
 main : IO ()
 main = do
